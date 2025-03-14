@@ -1,0 +1,33 @@
+/* Mise en forme du texte */
+body {
+    font-family: 'Georgia', serif;
+    line-height: 1.8;
+    margin: 5% 10%;
+    text-align: justify;
+}
+
+p {
+    text-indent: 2em;
+    margin-bottom: 1.5em;
+}
+
+h1, h2, h3 {
+    text-align: center;
+    margin-top: 2.5em;
+    margin-bottom: 1em;
+    font-weight: bold;
+}
+
+blockquote {
+    margin: 2em 5%;
+    padding: 1em 2em;
+    border-left: 4px solid #888;
+    font-style: italic;
+    background-color: #f9f9f9;
+    word-wrap: break-word;
+}
+
+.bold-text {
+    font-weight: bold;
+}
+

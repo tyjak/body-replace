@@ -1,4 +1,4 @@
-package bodyreplace
+package main
 
 import (
 	"bytes"
@@ -7,58 +7,56 @@ import (
 	"regexp"
 )
 
-type Config struct {
-	Search  string `json:"search,omitempty"`
-	Replace string `json:"replace,omitempty"`
-}
+// Config structure for plugin configuration
+type Config struct {}
 
+// CreateConfig initializes the plugin configuration
 func CreateConfig() *Config {
 	return &Config{}
 }
 
-type BodyReplace struct {
-	next    http.Handler
-	name    string
-	search  *regexp.Regexp
+type ReplaceStars struct {
+	next   http.Handler
+	name   string
+	regex  *regexp.Regexp
 	replace string
 }
 
-func New(next http.Handler, config *Config, name string) (http.Handler, error) {
-	re, err := regexp.Compile(config.Search)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BodyReplace{
-		next:    next,
-		name:    name,
-		search:  re,
-		replace: config.Replace,
+// New creates a new ReplaceStars middleware
+func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
+	regex := regexp.MustCompile(`\*\*(.*?)\*\*`)
+	return &ReplaceStars{
+		next:   next,
+		name:   name,
+		regex:  regex,
+		replace: "<b>$1</b>",
 	}, nil
 }
 
-func (br *BodyReplace) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (r *ReplaceStars) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	buffer := &bytes.Buffer{}
-	writer := &responseWriter{ResponseWriter: rw, buffer: buffer}
+	responseWriter := &responseWrapper{
+		ResponseWriter: rw,
+		body:           buffer,
+	}
 
-	br.next.ServeHTTP(writer, req)
+	r.next.ServeHTTP(responseWriter, req)
 
-	modifiedBody := br.search.ReplaceAllString(buffer.String(), br.replace)
-	rw.WriteHeader(writer.statusCode)
-	_, _ = rw.Write([]byte(modifiedBody))
+	modifiedContent := r.regex.ReplaceAllString(buffer.String(), r.replace)
+	rw.Header().Set("Content-Length", string(len(modifiedContent)))
+	rw.Write([]byte(modifiedContent))
 }
 
-type responseWriter struct {
+type responseWrapper struct {
 	http.ResponseWriter
-	buffer     *bytes.Buffer
-	statusCode int
+	body *bytes.Buffer
 }
 
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	return rw.buffer.Write(b)
+func (r *responseWrapper) Write(b []byte) (int, error) {
+	return r.body.Write(b)
 }
 
-func (rw *responseWriter) WriteHeader(statusCode int) {
-	rw.statusCode = statusCode
+func (r *responseWrapper) WriteHeader(statusCode int) {
+	r.ResponseWriter.WriteHeader(statusCode)
 }
 
